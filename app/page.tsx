@@ -12,14 +12,19 @@ function formatujKwote(grosze: number): string { return new Intl.NumberFormat('p
 function formatujLiczbe(grosze: number): string { return new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(grosze / 100); }
 function jestBledem(odpowiedz: Harmonogram | OdpowiedzBledu): odpowiedz is OdpowiedzBledu { return 'blad' in odpowiedz; }
 
+function escapujCsv(wartosc: string | number): string {
+  const tekst = String(wartosc);
+  return /[;"\n]/.test(tekst) ? `"${tekst.replace(/"/g, '""')}"` : tekst;
+}
+
 function pobierzCsv(harmonogram: Harmonogram): void {
   const wiersze = [
-    ['Numer', 'Data', 'Kapital (gr)', 'Odsetki (gr)', 'Rata (gr)', 'Nadplata (gr)', 'Saldo (gr)'],
-    ...harmonogram.raty.map((rata) => [rata.numer, rata.data, rata.czescKapitalowaGr, rata.czescOdsetkowaGr, rata.rataGr, rata.nadplataGr, rata.saldoPoSplacieGr]),
-    [], ['Suma odsetek (gr)', harmonogram.sumaOdsetekGr],
+    ['Numer', 'Data', 'Kapital (PLN)', 'Odsetki (PLN)', 'Rata (PLN)', 'Nadplata (PLN)', 'Saldo (PLN)'],
+    ...harmonogram.raty.map((rata) => [rata.numer, rata.data, formatujKwote(rata.czescKapitalowaGr), formatujKwote(rata.czescOdsetkowaGr), formatujKwote(rata.rataGr), formatujKwote(rata.nadplataGr), formatujKwote(rata.saldoPoSplacieGr)]),
+    [], ['Suma odsetek (PLN)', formatujKwote(harmonogram.sumaOdsetekGr)],
   ];
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(new Blob([`\uFEFF${wiersze.map((wiersz) => wiersz.join(';')).join('\n')}`], { type: 'text/csv;charset=utf-8' }));
+  link.href = URL.createObjectURL(new Blob([`\uFEFF${wiersze.map((wiersz) => wiersz.map(escapujCsv).join(';')).join('\n')}`], { type: 'text/csv;charset=utf-8' }));
   link.download = 'harmonogram.csv'; link.click(); URL.revokeObjectURL(link.href);
 }
 
