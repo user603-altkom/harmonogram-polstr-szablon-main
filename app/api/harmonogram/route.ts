@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { policzHarmonogram, type ParametryKredytu } from '../../../src/domena/harmonogram';
+import { policzHarmonogram, type Nadplata, type ParametryKredytu } from '../../../src/domena/harmonogram';
+import { seriaWskaznika } from '../../../src/dane/wskazniki';
 
 // Route handler jest cienki: parsuje parametry z query string, woła domenę, zwraca JSON.
 // Żadnych obliczeń finansowych w tym pliku. Przeliczenie jednostek wejścia
@@ -7,6 +8,25 @@ import { policzHarmonogram, type ParametryKredytu } from '../../../src/domena/ha
 
 const PRZYKLAD =
   '/api/harmonogram?kwota=400000&liczbaRat=300&marza=2.11&wskaznik=POLSTR_1M&typRat=rowne&pierwszaRata=2026-10-01';
+
+function jestNadplata(wartosc: unknown): wartosc is Nadplata {
+  if (typeof wartosc !== 'object' || wartosc === null) return false;
+  const rekord = wartosc as Record<string, unknown>;
+  return Number.isInteger(rekord.miesiac)
+    && Number.isSafeInteger(rekord.kwotaGr)
+    && (rekord.tryb === 'obniz_rate' || rekord.tryb === 'skroc_okres');
+}
+
+function parsujNadplaty(wartosc: string | null): Nadplata[] | string {
+  if (!wartosc) return [];
+  try {
+    const dane: unknown = JSON.parse(wartosc);
+    if (!Array.isArray(dane) || !dane.every(jestNadplata)) return 'nadplaty: niepoprawna lista';
+    return dane;
+  } catch {
+    return 'nadplaty: niepoprawny JSON';
+  }
+}
 
 function parsujParametry(szukane: URLSearchParams): ParametryKredytu | string {
   const kwota = Number(szukane.get('kwota'));
@@ -22,6 +42,8 @@ function parsujParametry(szukane: URLSearchParams): ParametryKredytu | string {
   if (wskaznik !== 'POLSTR_1M' && wskaznik !== 'WIBOR_3M') return 'wskaznik: POLSTR_1M albo WIBOR_3M';
   if (typRat !== 'rowne' && typRat !== 'malejace') return 'typRat: rowne albo malejace';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(pierwszaRata)) return 'pierwszaRata: data YYYY-MM-DD';
+  const nadplaty = parsujNadplaty(szukane.get('nadplaty'));
+  if (typeof nadplaty === 'string') return nadplaty;
 
   return {
     kwotaGr: Math.round(kwota * 100),
@@ -30,6 +52,7 @@ function parsujParametry(szukane: URLSearchParams): ParametryKredytu | string {
     wskaznik,
     typRat,
     pierwszaRata,
+    nadplaty,
   };
 }
 
@@ -40,13 +63,10 @@ export function GET(request: Request) {
   }
 
   try {
-    const harmonogram = policzHarmonogram(parametry);
+    const harmonogram = policzHarmonogram(parametry, seriaWskaznika(parametry.wskaznik));
     return NextResponse.json(harmonogram);
   } catch (blad) {
     const komunikat = blad instanceof Error ? blad.message : String(blad);
-    if (komunikat.startsWith('nie zaimplementowano')) {
-      return NextResponse.json({ blad: komunikat, parametry, przyklad: PRZYKLAD }, { status: 501 });
-    }
     return NextResponse.json({ blad: komunikat }, { status: 400 });
   }
 }

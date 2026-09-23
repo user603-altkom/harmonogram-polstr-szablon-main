@@ -1,50 +1,86 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version change: initial template -> 1.0.0
+- Modified principles: none; all five principles established from project conventions
+- Added sections: Additional Constraints, Development Workflow, Governance
+- Removed sections: none
+- Follow-up TODOs: RATIFICATION_DATE requires confirmation of the original adoption date
+-->
+
+# Harmonogram na POLSTR Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Logika domenowa bez efektów ubocznych
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Cała logika obliczania harmonogramu MUST znajdować się w czystych funkcjach
+modułu domenowego `src/domena/`. Funkcje domenowe MUST być niezależne od React,
+I/O, zegara systemowego i warstwy HTTP. Route handler MUST wyłącznie parsować
+parametry, wywoływać domenę i serializować wynik. Dzięki temu obliczenia są
+deterministyczne, testowalne i możliwe do ponownego użycia.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Jedno źródło prawdy dla danych i zaokrągleń
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Dane wskaźników MUST być wczytywane z plików JSON w `dane/` przez moduł
+`src/dane/`. Kwoty pieniężne MUST być reprezentowane w groszach jako liczby
+całkowite albo przez inną jawnie udokumentowaną konwencję. Zaokrąglanie MUST
+odbywać się w jednym określonym miejscu, a końcowa rata MUST wyrównywać sumę
+części kapitałowych do kwoty kredytu. Zmniejsza to ryzyko rozbieżności między
+obliczeniami, API i ekranem.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Testy najpierw dla reguł finansowych
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Każda zmiana logiki obliczeń MUST mieć test Vitest z liczbą kontrolną lub
+innym jednoznacznym oczekiwaniem. Minimalny zakres testów obejmuje raty równe
+i malejące, zmianę wskaźnika, oba tryby nadpłaty oraz zgodność sumy części
+kapitałowych z kwotą kredytu. Testy domeny MUST poprzedzać implementację zmiany,
+ponieważ błędny wynik finansowy jest regresją krytyczną dla produktu.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Jawne kontrakty warstw
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Publiczne kontrakty API MUST opisywać stabilne parametry wejściowe i strukturę
+wyniku harmonogramu. Ekran MUST pobierać dane przez `GET /api/harmonogram`,
+a eksport CSV MUST działać po stronie przeglądarki. Zmiana kontraktu wymaga
+aktualizacji wywołującego ekranu, testów i dokumentacji w tym samym zadaniu.
+Rozdzielenie domeny, API i interfejsu ogranicza niejawne zależności.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Minimalny zakres, czytelność i weryfikowalność
+
+Implementacja MUST pozostać w zakresie zaakceptowanego MVP i MUST preferować
+istniejące wzorce projektu zamiast nowych abstrakcji lub zależności. Uproszczenia
+MVP, takie jak użycie wartości wskaźnika wprost z danych bez składania stawek
+dziennych, MUST być jawnie opisane. Każda faza MUST kończyć się uruchomieniem
+odpowiednich testów, sprawdzenia typów i buildu, aby wynik był możliwy do
+zweryfikowania lokalnie i na Vercel.
+
+## Additional Constraints
+
+Projekt MUST używać Next.js App Router, TypeScript strict, Tailwind CSS i Vitest
+zgodnie z istniejącą konfiguracją. Kod TypeScript MUST nie używać `any` ani
+`@ts-ignore`. Nazwy domenowe, dokumentacja i komentarze MUST być po polsku.
+Pliki `dane/` są wejściem testów i MUST NOT być zmieniane bez wyraźnego
+polecenia. Moduł domenowy MUST nie importować React ani wykonywać I/O.
+
+## Development Workflow
+
+Praca MUST przebiegać fazami opisanymi w `tasks.md`; po zakończeniu fazy należy
+zatrzymać się do akceptacji następnej. Przed zgłoszeniem gotowości MUST zostać
+uruchomione `npm test`, `npm run typecheck` i `npm run build`. Pull requesty
+MUST przejść przegląd zgodności z tą konstytucją oraz istniejącymi instrukcjami
+review. Push do `main` jest wdrożeniem produkcyjnym na Vercel, więc czerwony
+build lokalny blokuje zgłoszenie gotowości.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+Ta konstytucja jest nadrzędnym dokumentem zasad projektu. Zmiana wymaga opisu
+powodu, aktualizacji tego pliku, raportu wpływu i przeglądu zgodności. Zasady
+techniczne mogą być doprecyzowane w `AGENTS.md`, instrukcjach review i artefaktach
+Spec Kit, ale nie mogą pozostawać z nimi w sprzeczności.
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+Wersjonowanie używa semantycznego schematu MAJOR.MINOR.PATCH. Zwiększenie MAJOR
+oznacza usunięcie lub redefinicję zasady w sposób niezgodny wstecz, MINOR oznacza
+nową zasadę albo istotne rozszerzenie zakresu, a PATCH oznacza korektę językową
+lub doprecyzowanie bez zmiany obowiązku. Każdy przegląd zmian MUST sprawdzić
+zasady domeny, testy, kontrakty API, typowanie i bramki jakości.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: TODO(RATIFICATION_DATE): potwierdzić datę
+przyjęcia konstytucji | **Last Amended**: 2026-09-23
