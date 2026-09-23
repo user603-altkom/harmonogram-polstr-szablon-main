@@ -49,9 +49,19 @@ export default function Strona() {
   const [otwarteLata, setOtwarteLata] = useState<number[]>([]);
 
   function zmienPole(pole: keyof typeof formularz, wartosc: string) { setFormularz((poprzedni) => ({ ...poprzedni, [pole]: wartosc })); }
-  function zmienNadplate(index: number, pole: keyof WierszNadplaty, wartosc: string) { setNadplaty((poprzednie) => poprzednie.map((nadplata, numer) => numer === index ? { ...nadplata, [pole]: wartosc } : nadplata)); }
+  function zmienNadplate(index: number, pole: keyof WierszNadplaty, wartosc: string) {
+    setNadplaty((poprzednie) => poprzednie.map((nadplata, numer) => numer === index ? { ...nadplata, [pole]: wartosc } : nadplata));
+    if (pole === 'miesiac' && wartosc !== '') {
+      const miesiac = Number(wartosc);
+      const liczbaRat = Number(formularz.liczbaRat);
+      setBlad(!Number.isInteger(miesiac) || miesiac < 1 || miesiac > liczbaRat ? 'Numer miesiaca spoza zakresu harmonogramu' : '');
+    }
+  }
   function ustawLata(lata: number) { zmienPole('liczbaRat', String(lata * 12)); }
   function bladNadplaty(): string | null {
+    const liczbaRat = Number(formularz.liczbaRat);
+    const miesiacPozaZakresem = nadplaty.some((nadplata) => nadplata.miesiac.trim() && (!Number.isInteger(Number(nadplata.miesiac)) || Number(nadplata.miesiac) < 1 || Number(nadplata.miesiac) > liczbaRat));
+    if (miesiacPozaZakresem) return 'Numer miesiaca spoza zakresu harmonogramu';
     const niepelnaNadplata = nadplaty.find((nadplata) => !nadplata.miesiac.trim() || !nadplata.kwota.trim() || Number(nadplata.kwota) <= 0);
     if (!niepelnaNadplata) return null;
     return !niepelnaNadplata.miesiac.trim() ? 'Podaj po ktorej racie ma byc nadplata' : 'Podaj kwote nadplaty';
@@ -76,10 +86,10 @@ export default function Strona() {
       setBlad('Podaj kwote kredytu');
       return;
     }
-    const niepelnaNadplata = nadplaty.find((nadplata) => !nadplata.miesiac.trim() || !nadplata.kwota.trim() || Number(nadplata.kwota) <= 0);
-    if (niepelnaNadplata) {
+    const bladWalidacjiNadplaty = bladNadplaty();
+    if (bladWalidacjiNadplaty) {
       setWynik(null);
-      setBlad(!niepelnaNadplata.miesiac.trim() ? 'Podaj po ktorej racie ma byc nadplata' : 'Podaj kwote nadplaty');
+      setBlad(bladWalidacjiNadplaty);
       return;
     }
     setLadowanie(true); setBlad('');
@@ -125,7 +135,27 @@ export default function Strona() {
         {wynik && <section className="harmonogram-v4"><div className="naglowek-harmonogramu"><div><h2>Harmonogram</h2><p>Rozwiń rok, aby zobaczyć raty.</p></div><button className="eksport-v4" type="button" onClick={() => pobierzCsv(wynik)}>↓ CSV</button></div><div className="tabela-v4"><div className="wiersz-naglowka"><span>Nr</span><span>Data</span><span>Kapitał</span><span>Odsetki</span><span>Rata</span><span>Nadpłata</span><span>Saldo</span></div>{lata.map((rok) => { const wiersze = wynik.raty.filter((rata) => Number(rata.data.slice(0, 4)) === rok); const otwarte = otwarteLata.includes(rok); return <div key={rok}><button className="rok-v4" type="button" aria-expanded={otwarte} onClick={() => setOtwarteLata((poprzednie) => poprzednie.includes(rok) ? poprzednie.filter((element) => element !== rok) : [...poprzednie, rok])}><strong>{rok}</strong><span>{wiersze.length} rat · saldo {formatujKwote(wiersze.at(-1)?.saldoPoSplacieGr ?? 0)}</span><b>{otwarte ? '−' : '+'}</b></button>{otwarte && wiersze.map((rata) => <div className="wiersz-tabeli" key={rata.numer}><span>{rata.numer}</span><span>{rata.data}</span><span>{formatujLiczbe(rata.czescKapitalowaGr)}</span><span>{formatujLiczbe(rata.czescOdsetkowaGr)}</span><span><b>{formatujLiczbe(rata.rataGr)}</b></span><span className="magenta-v4">{formatujLiczbe(rata.nadplataGr)}</span><span>{formatujLiczbe(rata.saldoPoSplacieGr)}</span></div>)}</div>; })}</div><p className="nota-v4">Wartości wskaźników są ilustracyjne. Po ostatnim wpisie serii obowiązuje ostatnia znana wartość. Wynik nie jest ofertą banku.</p></section>}
       </main>
 
-      {dialogNadplat && <div className="modal-tlo" role="presentation" onClick={zamknijDialogNadplat}><div className="modal-v4" role="dialog" aria-modal="true" aria-labelledby="nadplaty-tytul" onClick={(event) => event.stopPropagation()}><div className="naglowek-wiersza"><h2 id="nadplaty-tytul">Nadpłaty</h2><button className="przycisk-wtorny" type="button" onClick={dodajNadplate}>＋ Dodaj</button></div>{nadplaty.length === 0 && <p>Brak nadpłat. Dodaj pierwszą, aby zaplanować scenariusz.</p>}{nadplaty.map((nadplata, index) => <div className="wiersz-nadplaty-v4" key={`${index}-${nadplata.miesiac}`}><label className="pole-v4">Po racie<input value={nadplata.miesiac} onChange={(event) => zmienNadplate(index, 'miesiac', event.target.value)} /></label><label className="pole-v4">Kwota<input value={nadplata.kwota} onChange={(event) => zmienNadplate(index, 'kwota', event.target.value)} /></label><label className="pole-v4">Efekt<select value={nadplata.tryb} onChange={(event) => zmienNadplate(index, 'tryb', event.target.value as Nadplata['tryb'])}><option value="skroc_okres">Skróć okres</option><option value="obniz_rate">Obniż ratę</option></select></label><button className="przycisk-ikonowy" type="button" aria-label="Usuń nadpłatę" onClick={() => setNadplaty((poprzednie) => poprzednie.filter((_, numer) => numer !== index))}>×</button></div>)}{blad && <p className="blad-v4" role="alert">{blad}</p>}<div className="modal-akcje"><button className="policz-v4" type="button" onClick={zamknijDialogNadplat}>Gotowe</button></div></div></div>}
+      {dialogNadplat && (
+        <div className="modal-tlo" role="presentation" onClick={zamknijDialogNadplat}>
+          <div className="modal-v4" role="dialog" aria-modal="true" aria-labelledby="nadplaty-tytul" onClick={(event) => event.stopPropagation()}>
+            <div className="naglowek-wiersza">
+              <h2 id="nadplaty-tytul">Nadpłaty</h2>
+              <button className="przycisk-wtorny" type="button" onClick={dodajNadplate}>＋ Dodaj</button>
+            </div>
+            {nadplaty.length === 0 && <p>Brak nadpłat. Dodaj pierwszą, aby zaplanować scenariusz.</p>}
+            {nadplaty.map((nadplata, index) => (
+              <div className="wiersz-nadplaty-v4" key={`${index}-${nadplata.miesiac}`}>
+                <label className="pole-v4">Miesiac nadplaty<input type="number" min="1" max={formularz.liczbaRat} value={nadplata.miesiac} onChange={(event) => zmienNadplate(index, 'miesiac', event.target.value)} /></label>
+                <label className="pole-v4">Kwota<input value={nadplata.kwota} onChange={(event) => zmienNadplate(index, 'kwota', event.target.value)} /></label>
+                <label className="pole-v4">Efekt<select value={nadplata.tryb} onChange={(event) => zmienNadplate(index, 'tryb', event.target.value as Nadplata['tryb'])}><option value="skroc_okres">Skróć okres</option><option value="obniz_rate">Obniż ratę</option></select></label>
+                <button className="przycisk-ikonowy" type="button" aria-label="Usuń nadpłatę" onClick={() => setNadplaty((poprzednie) => poprzednie.filter((_, numer) => numer !== index))}>×</button>
+              </div>
+            ))}
+            {blad && <p className="blad-v4" role="alert">{blad}</p>}
+            <div className="modal-akcje"><button className="policz-v4" type="button" onClick={zamknijDialogNadplat}>Gotowe</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
