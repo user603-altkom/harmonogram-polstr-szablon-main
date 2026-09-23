@@ -67,10 +67,9 @@ test.describe('GUI kalkulatora harmonogramu', () => {
     await dialog.getByRole('button', { name: '＋ Dodaj' }).click();
     await dialog.getByLabel('Kwota').fill('5000');
     await dialog.getByRole('button', { name: 'Gotowe' }).click();
-    await page.getByRole('button', { name: 'Policz' }).click();
 
-    await expect(page.locator('.blad-v4')).toHaveText('Podaj po ktorej racie ma byc nadplata');
-    await expect(page.locator('.hero-kwota')).toHaveText('— ');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('.blad-v4')).toHaveText('Podaj po ktorej racie ma byc nadplata');
   });
 
   test('pobiera harmonogram jako plik CSV', async ({ page }) => {
