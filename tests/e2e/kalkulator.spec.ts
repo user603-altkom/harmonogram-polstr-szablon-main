@@ -43,7 +43,7 @@ test.describe('GUI kalkulatora harmonogramu', () => {
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: '＋ Dodaj' }).click();
-    await dialog.getByLabel('Po racie').fill('12');
+      await dialog.getByLabel('Miesiac nadplaty').fill('12');
     await dialog.getByLabel('Kwota').fill('5000');
     await dialog.getByLabel('Efekt').selectOption('obniz_rate');
     await dialog.getByRole('button', { name: 'Gotowe' }).click();
@@ -69,8 +69,20 @@ test.describe('GUI kalkulatora harmonogramu', () => {
     await dialog.getByRole('button', { name: 'Gotowe' }).click();
 
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator('.blad-v4')).toHaveText('Podaj po ktorej racie ma byc nadplata');
+      await expect(dialog.locator('.blad-v4')).toHaveText('Podaj po ktorej racie ma byc nadplata');
   });
+
+    test('blokuje miesiąc nadpłaty poza okresem kredytowania', async ({ page }) => {
+      await page.goto('/');
+      await page.getByLabel('Liczba rat').fill('12');
+      await page.getByRole('button', { name: 'Dodaj' }).click();
+      const dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: '＋ Dodaj' }).click();
+      await dialog.getByLabel('Miesiac nadplaty').fill('13');
+
+      await expect(dialog.locator('.blad-v4')).toHaveText('Numer miesiaca spoza zakresu harmonogramu');
+      await expect(dialog.getByLabel('Miesiac nadplaty')).toHaveAttribute('max', '12');
+    });
 
   test('pobiera harmonogram jako plik CSV', async ({ page }) => {
     await page.goto('/');
