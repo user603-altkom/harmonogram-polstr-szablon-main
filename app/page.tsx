@@ -53,7 +53,19 @@ export default function Strona() {
   function ustawLata(lata: number) { zmienPole('liczbaRat', String(lata * 12)); }
 
   async function oblicz(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setLadowanie(true); setBlad('');
+    event.preventDefault();
+    if (!formularz.kwota.trim() || Number(formularz.kwota) <= 0) {
+      setWynik(null);
+      setBlad('Podaj kwote kredytu');
+      return;
+    }
+    const niepelnaNadplata = nadplaty.find((nadplata) => !nadplata.miesiac.trim() || !nadplata.kwota.trim() || Number(nadplata.kwota) <= 0);
+    if (niepelnaNadplata) {
+      setWynik(null);
+      setBlad(!niepelnaNadplata.miesiac.trim() ? 'Podaj po ktorej racie ma byc nadplata' : 'Podaj kwote nadplaty');
+      return;
+    }
+    setLadowanie(true); setBlad('');
     const parametry = new URLSearchParams(formularz);
     const daneNadplat = nadplaty.filter((nadplata) => nadplata.miesiac !== '' || nadplata.kwota !== '').map((nadplata) => ({ miesiac: Number(nadplata.miesiac), kwotaGr: Math.round(Number(nadplata.kwota) * 100), tryb: nadplata.tryb }));
     if (daneNadplat.length > 0) parametry.set('nadplaty', JSON.stringify(daneNadplat));
